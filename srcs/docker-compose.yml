@@ -1,0 +1,79 @@
+version: '3'
+services:
+
+# Nginx Service
+  nginx:
+    container_name: "nginx"
+    build: requirements/nginx
+    depends_on:
+      - wordpress
+    image: nginx
+    working_dir: /var/www/html
+    ports: 
+      - "443:443"
+    volumes:
+      - wp_data:/var/www/html
+      # The volume wp_data persists the contents of the /var/www/html folder present inside the container
+      # The nginx service can be stopped and restarted without losing data
+      # The nginx service needs to access wordpress's content so needs access to its volume
+    networks: # To link containers to let them communicate
+      - inception_network
+    restart: on-failure
+  
+# MariaDB Service
+  mariadb:
+    container_name: "mariadb"
+    build: requirements/mariadb
+    image: mariadb
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    env_file:
+      - ./.env
+    networks:
+      - inception_network
+    restart: on-failure
+
+# Wordpress Service
+  wordpress:
+    container_name: "wordpress"
+    build: requirements/wordpress
+    depends_on:
+      - mariadb
+    image: wordpress
+    working_dir: /var/www/html
+    ports:
+      - "9000:9000"
+    volumes:
+      - wp_data:/var/www/html
+    env_file:
+      - ./.env
+    networks:
+      - inception_network
+    restart: on-failure
+
+# Volumes definition
+volumes:
+  # Definition of the wp_data volume (wordpress)
+  # With this definition, this volume can be used across services
+  wp_data:
+    driver: local # Specify which volume driver should be used for this volume
+    driver_opts: # Specify a list of options to pass to the driver for this volume
+      type: none
+      device: /home/jnougaro/data/wp_data
+      o: bind # To save data's containers in /home/jnougaro/data/wordpress
+  db_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/jnougaro/data/db_data
+      o: bind
+
+# Networks definition
+networks:
+  inception_network:
+    driver: bridge
+
+# For volumes, see "How To Set Up Laravel, Nginx, and MySQL With Docker Compose on digitalocean"
+# For volumes, see https://docs.docker.com/compose/compose-file/compose-file-v3/
